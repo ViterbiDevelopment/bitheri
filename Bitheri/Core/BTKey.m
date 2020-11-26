@@ -382,6 +382,72 @@ int ECDSA_SIG_recover_key_GFp(EC_KEY *eckey, ECDSA_SIG *ecsig, const unsigned ch
     return [NSString base58checkWithData:d];
 }
 
+-(NSString *)privateKey_TV{
+    if (!EC_KEY_check_key(_key)) return nil;
+    
+    const BIGNUM *priv = EC_KEY_get0_private_key(_key);
+    NSMutableData *d = [NSMutableData secureDataWithCapacity:34];
+    [d appendBytes:"\x80" length:1];
+    d.length = 33;
+    BN_bn2bin(priv, (unsigned char *) d.mutableBytes + d.length - BN_num_bytes(priv));
+    
+    NSMutableData *hashData = [NSMutableData dataWithBytes:d.bytes length:d.length];
+    [hashData appendData:[d.SHA256_2 subdataWithRange:NSMakeRange(0, 4)]];
+    return [NSString base58WithData:hashData];
+}
+
+-(NSString *)privateKey_ETH{
+    if (!EC_KEY_check_key(_key)) return nil;
+    
+    const BIGNUM *priv = EC_KEY_get0_private_key(_key);
+    NSMutableData *d = [NSMutableData secureDataWithCapacity:34];
+    d.length = 32;
+    BN_bn2bin(priv, (unsigned char *) d.mutableBytes + d.length - BN_num_bytes(priv));
+    
+    return [[NSString hexWithData:d] lowercaseString];
+}
+
+-(NSString*)privateKey_NEO{
+    if (!EC_KEY_check_key(_key)) return nil;
+    
+    const BIGNUM *priv = EC_KEY_get0_private_key(_key);
+    NSMutableData *d = [NSMutableData secureDataWithCapacity:34];
+    [d appendBytes:"\x80" length:1];
+    d.length = 33;
+    BN_bn2bin(priv, (unsigned char *) d.mutableBytes + d.length - BN_num_bytes(priv));
+    if (EC_KEY_get_conv_form(_key) == POINT_CONVERSION_COMPRESSED) [d appendBytes:"\x01" length:1];
+    
+    return [NSString base58checkWithData:d];
+}
+
+- (NSString *)privateKey_LTC {
+    if (!EC_KEY_check_key(_key)) return nil;
+    
+    const BIGNUM *priv = EC_KEY_get0_private_key(_key);
+    NSMutableData *d = [NSMutableData secureDataWithCapacity:34];
+    [d appendBytes:"\xb0" length:1];
+    d.length = 33;
+    BN_bn2bin(priv, (unsigned char *) d.mutableBytes + d.length - BN_num_bytes(priv));
+    
+    NSMutableData *hashData = [NSMutableData dataWithBytes:d.bytes length:d.length];
+    [hashData appendData:[d.SHA256_2 subdataWithRange:NSMakeRange(0, 4)]];
+    return [NSString base58WithData:hashData];
+}
+
+- (NSString *)privateKey_BTH{
+    if (!EC_KEY_check_key(_key)) return nil;
+    
+    const BIGNUM *priv = EC_KEY_get0_private_key(_key);
+    NSMutableData *d = [NSMutableData secureDataWithCapacity:34];
+    [d appendBytes:"\xc" length:1];
+    d.length = 33;
+    BN_bn2bin(priv, (unsigned char *) d.mutableBytes + d.length - BN_num_bytes(priv));
+    if (EC_KEY_get_conv_form(_key) == POINT_CONVERSION_COMPRESSED) [d appendBytes:"\x01" length:1];
+    
+    return [NSString base58checkWithData:d];
+}
+
+
 - (void)setPublicKey:(NSData *)publicKey {
     const unsigned char *bytes = publicKey.bytes;
 
@@ -397,6 +463,31 @@ int ECDSA_SIG_recover_key_GFp(EC_KEY *eckey, ECDSA_SIG *ecsig, const unsigned ch
 
     if (i2o_ECPublicKey(_key, &bytes) != l) return nil;
 
+    return pubKey;
+}
+
+- (NSData *)publicKey_TV {
+    if (!EC_KEY_check_key(_key)) return nil;
+    
+    size_t l = (size_t) i2o_ECPublicKey(_key, NULL);
+    NSMutableData *pubKey = [NSMutableData secureDataWithLength:l];
+    unsigned char *bytes = pubKey.mutableBytes;
+    if (i2o_ECPublicKey(_key, &bytes) != l) return nil;
+    
+    NSMutableData *dd = [NSMutableData dataWithBytes:pubKey.bytes length:pubKey.length];
+    [dd appendData:[pubKey.RMD160 subdataWithRange:NSMakeRange(0, 4)]];
+    return dd;
+}
+
+- (NSData *)publicKey_ETH {
+    if (!EC_KEY_check_key(_key)) return nil;
+    
+    EC_KEY_set_conv_form(_key,POINT_CONVERSION_UNCOMPRESSED);
+    size_t l = (size_t) i2o_ECPublicKey(_key, NULL);
+    NSMutableData *pubKey = [NSMutableData secureDataWithLength:l];
+    unsigned char *bytes = pubKey.mutableBytes;
+    if (i2o_ECPublicKey(_key, &bytes) != l) return nil;
+    
     return pubKey;
 }
 
@@ -420,6 +511,101 @@ int ECDSA_SIG_recover_key_GFp(EC_KEY *eckey, ECDSA_SIG *ecsig, const unsigned ch
     [d appendData:hash];
 
     return [NSString base58checkWithData:d];
+}
+
+- (NSString *)address_TV {
+    NSData *hash = [self publicKey];
+    
+    NSData *baseData = hash.SHA512.RMD160;
+    NSMutableData *dd = [NSMutableData dataWithBytes:baseData.bytes length:baseData.length];
+    [dd appendData:[baseData.RMD160 subdataWithRange:NSMakeRange(0, 4)]];
+    NSString *coding = [NSString stringWithFormat:@"TV%@",[NSString base58WithData:dd]];
+    return coding;
+}
+
+- (NSString *)address_LTC {
+    NSData *hash = [self hash160];
+    
+    if (!hash.length) return nil;
+    
+    NSMutableData *d = [NSMutableData secureDataWithCapacity:hash.length + 1];
+    uint8_t version = 48;
+    [d appendBytes:&version length:1];
+    [d appendData:hash];
+    
+    return [NSString base58checkWithData:d];
+}
+
+- (NSString *)address_QTUM {
+    NSData *hash = [self hash160];
+    
+    if (!hash.length) return nil;
+    
+    NSMutableData *d = [NSMutableData secureDataWithCapacity:hash.length + 1];
+#if BITCOIN_TESTNET
+    uint8_t version = 120;
+#else
+    uint8_t version = 120;//正式网需要修改：58
+#endif
+    
+    [d appendBytes:&version length:1];
+    [d appendData:hash];
+    
+    return [NSString base58checkWithData:d];
+}
+
+- (NSString *)address_BTH {
+    NSData *hash = [self hash160];
+    
+    if (!hash.length) return nil;
+    
+    NSMutableData *d = [NSMutableData secureDataWithCapacity:hash.length + 1];
+    uint8_t version = 40;
+    
+    [d appendBytes:&version length:1];
+    [d appendData:hash];
+    
+    return [NSString base58checkWithData:d];
+}
+
+- (NSString *)address_NULS{
+    NSData *hash = [self hash160];
+
+    if (!hash.length) return nil;
+    
+    NSMutableData *d = [NSMutableData secureDataWithCapacity:hash.length + 4];
+    
+    [d appendBytes:"\x5" length:1];//正式网需要修改：4
+    [d appendBytes:"\x1" length:1];//正式网需要修改：23
+    [d appendBytes:"\x1" length:1];
+    [d appendData:hash];
+    
+    NSData *checkData = [NSData dataWithBytes:"\x0" length:1];
+    Byte *sourceDataPoint = (Byte *)[checkData bytes];
+    Byte *keyBytes = (Byte *)[d bytes];
+    for (long i = 0; i < [d length]; i++) {
+        sourceDataPoint[0] = sourceDataPoint[0] ^ keyBytes[i];
+    }
+    [d appendData:checkData];
+    
+    return [NSString base58WithData:d];
+}
+
+- (NSString *)address_GDW {
+    NSData *hash = [self hash160];
+    
+    if (!hash.length) return nil;
+    
+    NSMutableData *d = [NSMutableData secureDataWithCapacity:hash.length + 1];
+    uint8_t version = 38;
+    [d appendBytes:&version length:1];
+    [d appendData:hash];
+    
+    return [NSString base58checkWithData:d];
+}
+
+- (NSData *)address_BCH {
+    return [self hash160];
 }
 
 - (NSData *)sign:(NSData *)d {

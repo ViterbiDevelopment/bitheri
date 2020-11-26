@@ -77,7 +77,13 @@ CFAllocatorRef SecureAllocator();
 
 + (NSString *)addressWithScript:(NSData *)script;
 
++ (NSString *)addressWithScript:(NSData *)script version:(uint8_t)version;
+
 + (NSString *)addressWithPubKey:(NSData *)pubKey;
+
++ (NSString *)p2shAddressFromHash:(NSData *)hash;
+
++ (NSString *)p2shAddressFromHash:(NSData *)hash version:(uint8_t)version;
 
 + (NSString *)hexWithHash:(NSData *)d;
 

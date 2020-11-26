@@ -49,8 +49,26 @@ typedef struct _BRPubKey {
 @interface BTKey : NSObject
 
 @property(nonatomic, copy) NSString *privateKey;
+@property(nonatomic, copy) NSString *privateKey_TV;
+@property(nonatomic, copy) NSString *privateKey_ETH;
+@property(nonatomic, copy) NSString *privateKey_LTC;
+@property(nonatomic, copy) NSString *privateKey_NEO;
+@property(nonatomic, copy) NSString *privateKey_BTH;
+@property(nonatomic, copy) NSData *privateKeyData;
+
 @property(nonatomic, copy) NSData *publicKey;
+@property(nonatomic, copy) NSData *publicKey_TV;
+@property(nonatomic, copy) NSData *publicKey_ETH;
+
 @property(nonatomic, readonly) NSString *address;
+@property(nonatomic, readonly) NSString *address_TV;
+@property(nonatomic, readonly) NSString *address_LTC;
+@property(nonatomic, readonly) NSString *address_QTUM;
+@property(nonatomic, readonly) NSString *address_BTH;
+@property(nonatomic, readonly) NSString *address_NULS;
+@property(nonatomic, readonly) NSString *address_GDW;
+@property(nonatomic, copy) NSData *address_BCH;
+
 @property(nonatomic, readonly) NSData *hash160;
 @property BOOL compressed;
 @property BOOL isFromXRandom;

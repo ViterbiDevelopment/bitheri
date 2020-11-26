@@ -50,6 +50,14 @@
     return d;
 }
 
+- (NSData *)SHA512{
+    NSMutableData *d = [NSMutableData dataWithLength:CC_SHA512_DIGEST_LENGTH];
+    
+    CC_SHA512(self.bytes, (CC_LONG) self.length, d.mutableBytes);
+    
+    return d;
+}
+
 - (NSData *)SHA256 {
     NSMutableData *d = [NSMutableData dataWithLength:CC_SHA256_DIGEST_LENGTH];
 

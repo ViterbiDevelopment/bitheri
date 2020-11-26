@@ -43,6 +43,8 @@
 
 - (NSData *)SHA1;
 
+- (NSData *)SHA512;
+
 - (NSData *)SHA256;
 
 - (NSData *)SHA256_2;

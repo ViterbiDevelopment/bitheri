@@ -317,6 +317,28 @@ CFAllocatorRef SecureAllocator() {
     return [self base58checkWithData:d];
 }
 
++ (NSString *)addressWithScript:(NSData *)script version:(uint8_t)version{
+    static NSData *suffix = nil;
+    static dispatch_once_t onceToken = 0;
+    
+    dispatch_once(&onceToken, ^{
+        suffix = [NSData dataWithBytes:SCRIPT_SUFFIX length:strlen(SCRIPT_SUFFIX)];
+    });
+    
+    if (script == (id) [NSNull null] || script.length < suffix.length + 20 ||
+        ![[script subdataWithRange:NSMakeRange(script.length - suffix.length, suffix.length)] isEqualToData:suffix]) {
+        return nil;
+    }
+    
+    uint8_t x = version;
+    
+    NSMutableData *d = [NSMutableData dataWithBytes:&x length:1];
+    
+    [d appendBytes:(const uint8_t *) script.bytes + script.length - suffix.length - 20 length:20];
+    
+    return [self base58checkWithData:d];
+}
+
 + (NSString *)addressWithPubKey:(NSData *)pubKey; {
     if (pubKey == (id) [NSNull null] || pubKey.length < 33) {
         return nil;
@@ -326,6 +348,32 @@ CFAllocatorRef SecureAllocator() {
     NSData *hash = [pubKey hash160];
     [d appendBytes:(const uint8_t *) hash.bytes length:20];
     return [self base58checkWithData:d];
+}
+
+
++ (NSString *)p2shAddressFromHash:(NSData *)hash; {
+    if (!hash.length) return nil;
+    NSMutableData *d = [NSMutableData secureDataWithCapacity:hash.length + 1];
+#if BITCOIN_TESTNET
+    uint8_t version = BITCOIN_SCRIPT_ADDRESS_TEST;
+#else
+    uint8_t version = BITCOIN_SCRIPT_ADDRESS;
+#endif
+    
+    [d appendBytes:&version length:1];
+    [d appendData:hash];
+    
+    return [NSString base58checkWithData:d];
+}
+
++ (NSString *)p2shAddressFromHash:(NSData *)hash version:(uint8_t)version{
+    if (!hash.length) return nil;
+    NSMutableData *d = [NSMutableData secureDataWithCapacity:hash.length + 1];
+    uint8_t x = version;
+    [d appendBytes:&x length:1];
+    [d appendData:hash];
+    
+    return [NSString base58checkWithData:d];
 }
 
 
